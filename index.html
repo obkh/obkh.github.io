@@ -257,7 +257,6 @@
             <p class="tagline cursor-blink">security researcher / bug bounty hunter</p>
             <nav class="nav">
                 <a href="#about">about</a>
-                <a href="#findings">findings</a>
                 <a href="#skills">skills</a>
                 <a href="#contact">contact</a>
             </nav>
@@ -291,58 +290,6 @@
                     <span class="number">2024</span>
                     <span class="label">Active Since</span>
                 </div>
-            </div>
-        </section>
-
-        <section id="findings">
-            <h2>Notable Findings</h2>
-
-            <div class="finding">
-                <div class="title">
-                    <span class="severity high">High</span>
-                    SSRF with Response Body Exfiltration via Alerting Integration
-                </div>
-                <div class="meta">Grafana OSS &mdash; Slack contact point test endpoint bypasses firewall, leaks full response body</div>
-            </div>
-
-            <div class="finding">
-                <div class="title">
-                    <span class="severity high">High</span>
-                    Non-Blind SSRF via Webhook Center
-                </div>
-                <div class="meta">SaaS Ticketing Platform &mdash; Server-side requests to arbitrary URLs with response exfiltration through notification API</div>
-            </div>
-
-            <div class="finding">
-                <div class="title">
-                    <span class="severity high">High</span>
-                    Critical API Secret Exposure
-                </div>
-                <div class="meta">Gaming Platform &mdash; 200+ consumer keys leaked via public endpoints, enabling account farming</div>
-            </div>
-
-            <div class="finding">
-                <div class="title">
-                    <span class="severity medium">Medium</span>
-                    Stored XSS in Multi-Tenant Event System
-                </div>
-                <div class="meta">SaaS Platform &mdash; No input validation on address fields, HTML/JS stored and rendered across tenants</div>
-            </div>
-
-            <div class="finding">
-                <div class="title">
-                    <span class="severity medium">Medium</span>
-                    Blind SSRF via SMTP Integration
-                </div>
-                <div class="meta">Cloud Database Provider &mdash; JWKS self-referencing SSRF reaching AWS metadata service</div>
-            </div>
-
-            <div class="finding">
-                <div class="title">
-                    <span class="severity medium">Medium</span>
-                    GraphQL Audit Log Leakage
-                </div>
-                <div class="meta">Telecom Provider &mdash; Strapi GraphQL exposed employee PII across 4 wildcard domains</div>
             </div>
         </section>
 
