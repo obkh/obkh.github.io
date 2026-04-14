@@ -275,6 +275,59 @@
             color: var(--muted);
         }
 
+        /* ---- Write-ups ---- */
+        .writeups {
+            display: flex;
+            flex-direction: column;
+            gap: var(--space-sm);
+        }
+
+        .writeup {
+            display: flex;
+            align-items: center;
+            gap: var(--space-md);
+            padding: var(--space-md);
+            border: 1px solid var(--border);
+            text-decoration: none;
+            transition: border-color 0.15s ease;
+        }
+
+        .writeup:hover {
+            border-color: var(--primary);
+        }
+
+        .writeup-tag {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 2px 8px;
+            flex-shrink: 0;
+        }
+
+        .writeup-tag.critical {
+            background: rgba(255, 51, 51, 0.15);
+            color: var(--accent-red);
+            border: 1px solid rgba(255, 51, 51, 0.3);
+        }
+
+        .writeup-tag.high {
+            background: rgba(255, 165, 0, 0.15);
+            color: #FFA500;
+            border: 1px solid rgba(255, 165, 0, 0.3);
+        }
+
+        .writeup-title {
+            font-size: var(--text-base);
+            color: var(--fg);
+        }
+
+        .writeup-meta {
+            font-size: var(--text-sm);
+            color: var(--muted);
+            margin-left: auto;
+        }
+
         /* ---- Contact ---- */
         .links {
             display: flex;
@@ -327,6 +380,7 @@
                 <a href="#about">about</a>
                 <a href="#skills">skills</a>
                 <a href="#platforms">platforms</a>
+                <a href="#writeups">writeups</a>
                 <a href="#contact">contact</a>
             </nav>
         </header>
@@ -386,6 +440,17 @@
                 <div class="yr">2024 — Present</div>
                 <div class="role">HackerOne</div>
                 <div class="desc">Authentication and authorization flaws in high-value targets.</div>
+            </div>
+        </section>
+
+        <section id="writeups">
+            <h2>Write-ups</h2>
+            <div class="writeups">
+                <a class="writeup" href="#">
+                    <span class="writeup-tag critical">Critical</span>
+                    <span class="writeup-title">Coming soon</span>
+                    <span class="writeup-meta">Responsible disclosure pending</span>
+                </a>
             </div>
         </section>
 
